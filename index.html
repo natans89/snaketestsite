@@ -1,81 +1,162 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Snake Game</title>
-<style>
-  body {
-    background-color: #a83283; /* Nokia-like green background */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-    font-family: Arial, sans-serif;
-  }
-  #game-container {
-    width: 300px;
-    height: 350px;
-    background-color: #000;
-    position: relative;
-    border: 10px solid #666;
-    border-radius: 20px;
-  }
-  #game-board {
-    width: 250px;
-    height: 200px;
-    background-color: #808000;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    overflow: hidden;
-  }
-  .snake {
-    width: 10px;
-    height: 10px;
-    background-color: #000;
-    position: absolute;
-  }
-  .food {
-    width: 10px;
-    height: 10px;
-    background-color: #000;
-    position: absolute;
-  }
-  #score {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    color: #fff;
-    font-size: 14px;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Snake Game</title>
+  <style>
+    body {
+      background-color: #808000; /* Nokia-like green background */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+    #game-container {
+      width: 300px;
+      height: 350px;
+      background-color: #000;
+      position: relative;
+      border: 10px solid #666;
+      border-radius: 20px;
+      margin-top: 20px;
+      overflow: hidden;
+    }
+    #game-board {
+      width: 250px;
+      height: 200px;
+      background-color: #808000;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      overflow: hidden;
+    }
+    .snake {
+      width: 10px;
+      height: 10px;
+      background-color: #000;
+      position: absolute;
+    }
+    .food {
+      width: 10px;
+      height: 10px;
+      background-color: #000;
+      position: absolute;
+    }
+    #score {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      color: #fff;
+      font-size: 14px;
+    }
+    /* Game Over Overlay */
+    #game-over-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+      display: none; /* Hidden initially */
+    }
+    #game-over-overlay h1 {
+      margin: 0 0 10px;
+    }
+    #game-over-overlay button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    
+    /* D-Pad Controls */
+    #dpad {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      user-select: none; /* Prevent long-press selects on mobile */
+    }
+    .dpad-row {
+      display: flex;
+    }
+    .dpad-button {
+      width: 50px;
+      height: 50px;
+      margin: 5px;
+      border-radius: 10px;
+      border: 2px solid #666;
+      background-color: #eee;
+      font-size: 16px;
+      text-align: center;
+      vertical-align: middle;
+      line-height: 46px;
+      cursor: pointer;
+    }
+    .dpad-button:active {
+      background-color: #ccc;
+    }
+  </style>
 </head>
 <body>
+
 <div id="game-container">
+  <!-- Game Over Overlay -->
+  <div id="game-over-overlay">
+    <h1>Thanks for having us to dinner Jamie and Adam!</h1>
+    <button id="play-again-btn">Play Again</button>
+  </div>
+
   <div id="game-board"></div>
   <div id="score">Score: 0 | High Score: 0</div>
+</div>
+
+<!-- Digital D-Pad -->
+<div id="dpad">
+  <div class="dpad-row">
+    <div class="dpad-button" id="up">▲</div>
+  </div>
+  <div class="dpad-row">
+    <div class="dpad-button" id="left">◀</div>
+    <div class="dpad-button" id="right">▶</div>
+  </div>
+  <div class="dpad-row">
+    <div class="dpad-button" id="down">▼</div>
+  </div>
 </div>
 
 <script>
   const board = document.getElementById('game-board');
   const scoreDisplay = document.getElementById('score');
+  const gameOverOverlay = document.getElementById('game-over-overlay');
+  const playAgainBtn = document.getElementById('play-again-btn');
+
   const boardWidth = 250;
   const boardHeight = 200;
   const cellSize = 10;
+
   let snake = [{x: 50, y: 50}];
   let direction = {x: 1, y: 0};
   let food = getRandomFoodPosition();
   let score = 0;
   let highScore = 0;
   let foodCount = 0;
-  
+  let gameOver = false; // track game over state
+
   function main() {
+    // Stop the game loop if game is over
+    if (gameOver) return;
+    
     if (isGameOver()) {
-      alert('Game Over!');
-      resetGame();
+      showGameOver();
       return;
     }
     setTimeout(() => {
@@ -86,12 +167,16 @@
   }
 
   function update() {
-    const head = {x: snake[0].x + direction.x * cellSize, y: snake[0].y + direction.y * cellSize};
+    const head = {
+      x: snake[0].x + direction.x * cellSize,
+      y: snake[0].y + direction.y * cellSize
+    };
     snake.unshift(head);
 
+    // Check for food collision
     if (head.x === food.x && head.y === food.y) {
       foodCount++;
-      score += foodCount % 5 === 0 ? 100 : 10;
+      score += (foodCount % 5 === 0) ? 100 : 10;
       if (score > highScore) highScore = score;
       food = getRandomFoodPosition();
     } else {
@@ -120,6 +205,7 @@
 
   function isGameOver() {
     const head = snake[0];
+    // Out of bounds or snake runs into itself
     return (
       head.x < 0 || head.x >= boardWidth ||
       head.y < 0 || head.y >= boardHeight ||
@@ -127,7 +213,14 @@
     );
   }
 
+  function showGameOver() {
+    gameOver = true;
+    gameOverOverlay.style.display = 'flex';
+  }
+
   function resetGame() {
+    gameOverOverlay.style.display = 'none';
+    gameOver = false;
     snake = [{x: 50, y: 50}];
     direction = {x: 1, y: 0};
     food = getRandomFoodPosition();
@@ -140,21 +233,95 @@
     while (!position || snake.some(segment => segment.x === position.x && segment.y === position.y)) {
       position = {
         x: Math.floor(Math.random() * (boardWidth / cellSize)) * cellSize,
-        y: Math.floor(Math.random() * (boardHeight / cellSize)) * cellSize,
+        y: Math.floor(Math.random() * (boardHeight / cellSize)) * cellSize
       };
     }
     return position;
   }
 
+  // Handle keyboard arrow keys
   window.addEventListener('keydown', e => {
     switch (e.key) {
-      case 'ArrowUp': if (direction.y === 0) direction = {x: 0, y: -1}; break;
-      case 'ArrowDown': if (direction.y === 0) direction = {x: 0, y: 1}; break;
-      case 'ArrowLeft': if (direction.x === 0) direction = {x: -1, y: 0}; break;
-      case 'ArrowRight': if (direction.x === 0) direction = {x: 1, y: 0}; break;
+      case 'ArrowUp':
+        if (direction.y === 0) direction = {x: 0, y: -1};
+        break;
+      case 'ArrowDown':
+        if (direction.y === 0) direction = {x: 0, y: 1};
+        break;
+      case 'ArrowLeft':
+        if (direction.x === 0) direction = {x: -1, y: 0};
+        break;
+      case 'ArrowRight':
+        if (direction.x === 0) direction = {x: 1, y: 0};
+        break;
     }
   });
 
+  // D-Pad button clicks
+  document.getElementById('up').addEventListener('click', () => {
+    if (direction.y === 0) direction = {x: 0, y: -1};
+  });
+  document.getElementById('down').addEventListener('click', () => {
+    if (direction.y === 0) direction = {x: 0, y: 1};
+  });
+  document.getElementById('left').addEventListener('click', () => {
+    if (direction.x === 0) direction = {x: -1, y: 0};
+  });
+  document.getElementById('right').addEventListener('click', () => {
+    if (direction.x === 0) direction = {x: 1, y: 0};
+  });
+
+  // Swipe detection (touch events)
+  let startX, startY;
+  board.addEventListener('touchstart', handleTouchStart, false);
+  board.addEventListener('touchmove', handleTouchMove, false);
+
+  function handleTouchStart(e) {
+    const firstTouch = e.touches[0];
+    startX = firstTouch.clientX;
+    startY = firstTouch.clientY;
+  }
+
+  function handleTouchMove(e) {
+    if (!startX || !startY) return;
+
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+
+    let diffX = startX - currentX;
+    let diffY = startY - currentY;
+
+    // If absolute X difference > absolute Y difference, it's a left/right swipe
+    if (Math.abs(diffX) > Math.abs(diffY)) {
+      if (diffX > 0) {
+        // Swipe left
+        if (direction.x === 0) direction = {x: -1, y: 0};
+      } else {
+        // Swipe right
+        if (direction.x === 0) direction = {x: 1, y: 0};
+      }
+    } else {
+      if (diffY > 0) {
+        // Swipe up
+        if (direction.y === 0) direction = {x: 0, y: -1};
+      } else {
+        // Swipe down
+        if (direction.y === 0) direction = {x: 0, y: 1};
+      }
+    }
+
+    // Reset touch start coords so we only register one swipe per move
+    startX = null;
+    startY = null;
+  }
+
+  // "Play Again" button
+  playAgainBtn.addEventListener('click', () => {
+    resetGame();
+    main();
+  });
+
+  // Start the game loop
   main();
 </script>
 </body>
