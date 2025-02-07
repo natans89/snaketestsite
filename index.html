@@ -3,16 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Snake Game</title>
+  <title>Snake Game - Nokia Style</title>
   <style>
-    body {
-      background-color: #808000; /* Nokia-like green background */
+    /* Reset default margins */
+    body, html {
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Outer container simulating phone casing */
+    #phone-shell {
+      width: 100vw;
+      height: 100vh;
+      border: 10px solid black;    /* Big black border to look like a phone casing */
+      box-sizing: border-box;
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin: 0;
-      font-family: Arial, sans-serif;
+      background-color: #808000;   /* Nokia-like green background inside */
+      position: relative;
     }
+
+    /* "NOKIA" label at the top */
+    #brand {
+      color: #000;
+      margin-top: 10px;
+      font-size: 24px;
+      font-weight: bold;
+      font-family: sans-serif;
+    }
+
+    /* Game container in the middle */
     #game-container {
       width: 300px;
       height: 350px;
@@ -20,7 +41,7 @@
       position: relative;
       border: 10px solid #666;
       border-radius: 20px;
-      margin-top: 20px;
+      margin-top: 10px;
       overflow: hidden;
     }
     #game-board {
@@ -51,14 +72,16 @@
       right: 10px;
       color: #fff;
       font-size: 14px;
+      font-family: Arial, sans-serif;
     }
+
     /* Game Over Overlay */
     #game-over-overlay {
       position: absolute;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
+      width: 300px;
+      height: 350px;
       background-color: rgba(0, 0, 0, 0.7);
       color: #fff;
       display: flex;
@@ -67,19 +90,23 @@
       align-items: center;
       z-index: 999;
       display: none; /* Hidden initially */
+      border-radius: 20px; /* match the container's round corners */
     }
     #game-over-overlay h1 {
       margin: 0 0 10px;
+      font-family: Arial, sans-serif;
     }
     #game-over-overlay button {
       padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
+      border: none;
+      border-radius: 5px;
     }
-    
-    /* D-Pad Controls */
+
+    /* D-Pad Controls - bigger buttons */
     #dpad {
-      margin-top: 20px;
+      margin-top: 10px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -89,47 +116,62 @@
       display: flex;
     }
     .dpad-button {
-      width: 50px;
-      height: 50px;
+      width: 80px;
+      height: 80px;
       margin: 5px;
       border-radius: 10px;
       border: 2px solid #666;
       background-color: #eee;
-      font-size: 16px;
+      font-size: 40px;             /* Bigger text for bigger buttons */
       text-align: center;
       vertical-align: middle;
-      line-height: 46px;
+      line-height: 78px;           /* Slightly less than height for perfect centering */
       cursor: pointer;
     }
     .dpad-button:active {
       background-color: #ccc;
     }
+
+    /* Make sure the D-pad stretches if we have more room */
+    @media (min-height: 700px) {
+      /* Optionally increase the size further if the screen is tall. */
+      .dpad-button {
+        width: 90px;
+        height: 90px;
+        font-size: 45px;
+        line-height: 88px;
+      }
+    }
   </style>
 </head>
+
 <body>
+<div id="phone-shell">
+  <div id="brand">NOKIA</div>
 
-<div id="game-container">
-  <!-- Game Over Overlay -->
-  <div id="game-over-overlay">
-    <h1>Thanks for having us to dinner Jamie and Adam!</h1>
-    <button id="play-again-btn">Play Again</button>
+  <div id="game-container">
+    <!-- Game Over Overlay -->
+    <div id="game-over-overlay">
+      <h1><center>Thanks for having <br> us to dinner <br> Jamie & Adam!</center> <br></h1>
+      <button id="play-again-btn">Play Again</button>
+    </div>
+
+    <div id="game-board"></div>
+    <div id="score">Score: 0 | High Score: 0</div>
   </div>
 
-  <div id="game-board"></div>
-  <div id="score">Score: 0 | High Score: 0</div>
-</div>
-
-<!-- Digital D-Pad -->
-<div id="dpad">
-  <div class="dpad-row">
-    <div class="dpad-button" id="up">▲</div>
-  </div>
-  <div class="dpad-row">
-    <div class="dpad-button" id="left">◀</div>
-    <div class="dpad-button" id="right">▶</div>
-  </div>
-  <div class="dpad-row">
-    <div class="dpad-button" id="down">▼</div>
+  <!-- Digital D-Pad -->
+  <div id="dpad">
+    <div class="dpad-row">
+      <div class="dpad-button" id="up">▲</div>
+    </div>
+    <div class="dpad-row">
+      <div class="dpad-button" id="left">◀</div>
+      <div class="dpad-button" id="right">▶</div>
+    </div>
+    <div class="dpad-row">
+      <div class="dpad-button" id="down">▼</div>
+    </div>
   </div>
 </div>
 
@@ -151,10 +193,16 @@
   let foodCount = 0;
   let gameOver = false; // track game over state
 
+  /* 1) Load any saved high score from localStorage */
+  document.addEventListener('DOMContentLoaded', function() {
+    const savedHighScore = localStorage.getItem('snakeHighScore');
+    if (savedHighScore) {
+      highScore = parseInt(savedHighScore, 10);
+    }
+  });
+
   function main() {
-    // Stop the game loop if game is over
     if (gameOver) return;
-    
     if (isGameOver()) {
       showGameOver();
       return;
@@ -177,7 +225,12 @@
     if (head.x === food.x && head.y === food.y) {
       foodCount++;
       score += (foodCount % 5 === 0) ? 100 : 10;
-      if (score > highScore) highScore = score;
+
+      /* 2) Save the new high score to localStorage if beaten */
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('snakeHighScore', highScore);
+      }
       food = getRandomFoodPosition();
     } else {
       snake.pop();
@@ -271,7 +324,7 @@
     if (direction.x === 0) direction = {x: 1, y: 0};
   });
 
-  // Swipe detection (touch events)
+  // Swipe detection (touch events) on the game board
   let startX, startY;
   board.addEventListener('touchstart', handleTouchStart, false);
   board.addEventListener('touchmove', handleTouchMove, false);
